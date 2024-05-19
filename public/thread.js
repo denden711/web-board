@@ -37,12 +37,14 @@ function loadMessages(threadId) {
 function postMessage() {
     const urlParams = new URLSearchParams(window.location.search);
     const threadId = urlParams.get('id');
-    const content = document.getElementById('message-content').value;
-    const username = document.getElementById('username').value;
-    if (content.trim() === "" || username.trim() === "") {
+    const content = document.getElementById('message-content').value.trim();
+    const username = document.getElementById('username').value.trim();
+
+    if (!username || !content) {
         alert("ユーザー名とメッセージ内容を入力してください");
         return;
     }
+
     fetch(`/threads/${threadId}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

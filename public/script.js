@@ -23,10 +23,16 @@ function loadThreads() {
 }
 
 function createThread() {
-    const title = document.getElementById('thread-title').value;
-    const description = document.getElementById('thread-description').value;
-    const initialMessage = document.getElementById('initial-message').value;
-    const username = document.getElementById('username').value;
+    const title = document.getElementById('thread-title').value.trim();
+    const description = document.getElementById('thread-description').value.trim();
+    const initialMessage = document.getElementById('initial-message').value.trim();
+    const username = document.getElementById('username').value.trim();
+
+    if (!title || !description || !initialMessage || !username) {
+        alert("すべてのフィールドを入力してください");
+        return;
+    }
+
     fetch('/threads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
