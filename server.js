@@ -11,7 +11,7 @@ app.use(cors());
 let db = new sqlite3.Database(':memory:');
 
 db.serialize(() => {
-  db.run("CREATE TABLE threads (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT)");
+  db.run("CREATE TABLE threads (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, updated_at TEXT)");
   db.run("CREATE TABLE messages (id INTEGER PRIMARY KEY AUTOINCREMENT, thread_id INTEGER, content TEXT, timestamp TEXT)");
 });
 
@@ -32,11 +32,23 @@ app.get('/threads', (req, res) => {
 // スレッドの作成
 app.post('/threads', (req, res) => {
   const { title } = req.body;
-  db.run("INSERT INTO threads (title) VALUES (?)", [title], function(err) {
+  const updatedAt = new Date().toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" });
+  db.run("INSERT INTO threads (title, updated_at) VALUES (?, ?)", [title, updatedAt], function(err) {
     if (err) {
       return res.status(400).json({ error: err.message });
     }
     res.json({ id: this.lastID });
+  });
+});
+
+// スレッドの取得
+app.get('/threads/:id', (req, res) => {
+  const { id } = req.params;
+  db.get("SELECT * FROM threads WHERE id = ?", [id], (err, row) => {
+    if (err) {
+      return res.status(400).json({ error: err.message });
+    }
+    res.json(row);
   });
 });
 
@@ -76,7 +88,12 @@ app.post('/threads/:id/messages', (req, res) => {
     if (err) {
       return res.status(400).json({ error: err.message });
     }
-    res.json({ id: this.lastID });
+    db.run("UPDATE threads SET updated_at = ? WHERE id = ?", [timestamp, id], function(err) {
+      if (err) {
+        return res.status(400).json({ error: err.message });
+      }
+      res.json({ id: this.lastID });
+    });
   });
 });
 

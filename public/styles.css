@@ -20,11 +20,11 @@ h1 {
     margin-bottom: 10px;
 }
 
-#new-thread {
+#new-thread, #new-message {
     margin-top: 20px;
 }
 
-#thread-title {
+#thread-title, #message-content {
     width: 80%;
     padding: 10px;
     margin-right: 10px;
