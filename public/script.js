@@ -82,7 +82,4 @@ function postMessage(threadId) {
 function deleteMessage(id) {
     fetch(`/messages/${id}`, { method: 'DELETE' })
     .then(() => {
-        const threadId = document.querySelector(`#messages-${id}`).dataset.threadId;
-        loadMessages(threadId);
-    });
-}
+        const
