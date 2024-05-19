@@ -41,3 +41,12 @@ button {
 button:hover {
     background-color: #0056b3;
 }
+
+button.back-button {
+    margin-bottom: 20px;
+    background-color: #6c757d;
+}
+
+button.back-button:hover {
+    background-color: #5a6268;
+}
