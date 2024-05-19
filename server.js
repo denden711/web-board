@@ -1,7 +1,11 @@
 const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
+const cors = require('cors');
 const app = express();
 const port = process.env.PORT || 3000;
+
+// CORSミドルウェアの追加
+app.use(cors());
 
 // データベースのセットアップ
 let db = new sqlite3.Database(':memory:');
@@ -30,7 +34,7 @@ app.post('/threads', (req, res) => {
   const { title } = req.body;
   db.run("INSERT INTO threads (title) VALUES (?)", [title], function(err) {
     if (err) {
-      return res.status(400).json({error: err.message});
+      return res.status(400).json({ error: err.message });
     }
     res.json({ id: this.lastID });
   });
@@ -41,11 +45,11 @@ app.delete('/threads/:id', (req, res) => {
   const { id } = req.params;
   db.run("DELETE FROM threads WHERE id = ?", [id], function(err) {
     if (err) {
-      return res.status(400).json({error: err.message});
+      return res.status(400).json({ error: err.message });
     }
     db.run("DELETE FROM messages WHERE thread_id = ?", [id], function(err) {
       if (err) {
-        return res.status(400).json({error: err.message});
+        return res.status(400).json({ error: err.message });
       }
       res.json({ message: 'Deleted' });
     });
@@ -70,7 +74,7 @@ app.post('/threads/:id/messages', (req, res) => {
   const timestamp = new Date().toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" });
   db.run("INSERT INTO messages (thread_id, content, timestamp) VALUES (?, ?, ?)", [id, content, timestamp], function(err) {
     if (err) {
-      return res.status(400).json({error: err.message});
+      return res.status(400).json({ error: err.message });
     }
     res.json({ id: this.lastID });
   });
@@ -81,7 +85,7 @@ app.delete('/messages/:id', (req, res) => {
   const { id } = req.params;
   db.run("DELETE FROM messages WHERE id = ?", [id], function(err) {
     if (err) {
-      return res.status(400).json({error: err.message});
+      return res.status(400).json({ error: err.message });
     }
     res.json({ message: 'Deleted' });
   });
