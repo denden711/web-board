@@ -12,7 +12,7 @@ let db = new sqlite3.Database(':memory:');
 
 db.serialize(() => {
   db.run("CREATE TABLE threads (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, description TEXT, updated_at TEXT)");
-  db.run("CREATE TABLE messages (id INTEGER PRIMARY KEY AUTOINCREMENT, thread_id INTEGER, content TEXT, timestamp TEXT)");
+  db.run("CREATE TABLE messages (id INTEGER PRIMARY KEY AUTOINCREMENT, thread_id INTEGER, username TEXT, content TEXT, timestamp TEXT)");
 });
 
 app.use(express.json());
@@ -31,14 +31,14 @@ app.get('/threads', (req, res) => {
 
 // スレッドの作成
 app.post('/threads', (req, res) => {
-  const { title, description, initialMessage } = req.body;
+  const { title, description, initialMessage, username } = req.body;
   const updatedAt = new Date().toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" });
   db.run("INSERT INTO threads (title, description, updated_at) VALUES (?, ?, ?)", [title, description, updatedAt], function(err) {
     if (err) {
       return res.status(400).json({ error: err.message });
     }
     const threadId = this.lastID;
-    db.run("INSERT INTO messages (thread_id, content, timestamp) VALUES (?, ?, ?)", [threadId, initialMessage, updatedAt], function(err) {
+    db.run("INSERT INTO messages (thread_id, username, content, timestamp) VALUES (?, ?, ?, ?)", [threadId, username, initialMessage, updatedAt], function(err) {
       if (err) {
         return res.status(400).json({ error: err.message });
       }
@@ -88,9 +88,9 @@ app.get('/threads/:id/messages', (req, res) => {
 // メッセージの投稿
 app.post('/threads/:id/messages', (req, res) => {
   const { id } = req.params;
-  const { content } = req.body;
+  const { username, content } = req.body;
   const timestamp = new Date().toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" });
-  db.run("INSERT INTO messages (thread_id, content, timestamp) VALUES (?, ?, ?)", [id, content, timestamp], function(err) {
+  db.run("INSERT INTO messages (thread_id, username, content, timestamp) VALUES (?, ?, ?, ?)", [id, username, content, timestamp], function(err) {
     if (err) {
       return res.status(400).json({ error: err.message });
     }

@@ -26,16 +26,18 @@ function createThread() {
     const title = document.getElementById('thread-title').value;
     const description = document.getElementById('thread-description').value;
     const initialMessage = document.getElementById('initial-message').value;
+    const username = document.getElementById('username').value;
     fetch('/threads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, description, initialMessage })
+        body: JSON.stringify({ title, description, initialMessage, username })
     })
     .then(response => response.json())
     .then(() => {
         document.getElementById('thread-title').value = '';
         document.getElementById('thread-description').value = '';
         document.getElementById('initial-message').value = '';
+        document.getElementById('username').value = '';
         loadThreads();
     });
 }

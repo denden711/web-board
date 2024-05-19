@@ -26,7 +26,7 @@ function loadMessages(threadId) {
                 const messageDiv = document.createElement('div');
                 messageDiv.className = 'message';
                 messageDiv.innerHTML = `
-                    <p>${message.content} - ${message.timestamp}</p>
+                    <p>${message.username}: ${message.content} - ${message.timestamp}</p>
                     <button onclick="deleteMessage(${message.id})">削除</button>
                 `;
                 messagesDiv.appendChild(messageDiv);
@@ -38,18 +38,20 @@ function postMessage() {
     const urlParams = new URLSearchParams(window.location.search);
     const threadId = urlParams.get('id');
     const content = document.getElementById('message-content').value;
-    if (content.trim() === "") {
-        alert("メッセージ内容を入力してください");
+    const username = document.getElementById('username').value;
+    if (content.trim() === "" || username.trim() === "") {
+        alert("ユーザー名とメッセージ内容を入力してください");
         return;
     }
     fetch(`/threads/${threadId}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content })
+        body: JSON.stringify({ username, content })
     })
     .then(response => response.json())
     .then(() => {
         document.getElementById('message-content').value = '';
+        document.getElementById('username').value = '';
         loadMessages(threadId);
     });
 }
