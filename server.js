@@ -1,117 +1,147 @@
 const express = require('express');
-const sqlite3 = require('sqlite3').verbose();
+const { Pool } = require('pg');
 const cors = require('cors');
 const app = express();
 const port = process.env.PORT || 3000;
 
+// 環境変数の読み込み
+require('dotenv').config();
+
 // CORSミドルウェアの追加
 app.use(cors());
 
-// データベースのセットアップ
-let db = new sqlite3.Database(':memory:');
-
-db.serialize(() => {
-  db.run("CREATE TABLE threads (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, description TEXT, updated_at TEXT)");
-  db.run("CREATE TABLE messages (id INTEGER PRIMARY KEY AUTOINCREMENT, thread_id INTEGER, username TEXT, content TEXT, timestamp TEXT)");
+// PostgreSQLのプールを設定
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false
+  }
 });
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
+// データベースの初期化
+pool.query(`
+  CREATE TABLE IF NOT EXISTS threads (
+    id SERIAL PRIMARY KEY,
+    title TEXT NOT NULL,
+    description TEXT,
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
+  CREATE TABLE IF NOT EXISTS messages (
+    id SERIAL PRIMARY KEY,
+    thread_id INTEGER REFERENCES threads(id) ON DELETE CASCADE,
+    username TEXT NOT NULL,
+    content TEXT NOT NULL,
+    timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  );
+`, (err) => {
+  if (err) {
+    console.error('Error initializing database', err);
+  } else {
+    console.log('Database initialized');
+  }
+});
+
 // スレッド一覧の取得
-app.get('/threads', (req, res) => {
-  db.all("SELECT * FROM threads", [], (err, rows) => {
-    if (err) {
-      throw err;
-    }
-    res.json(rows);
-  });
+app.get('/threads', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM threads');
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Error fetching threads', err);
+    res.status(500).json({ error: 'Database error' });
+  }
 });
 
 // スレッドの作成
-app.post('/threads', (req, res) => {
+app.post('/threads', async (req, res) => {
   const { title, description, initialMessage, username } = req.body;
-  const updatedAt = new Date().toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" });
-  db.run("INSERT INTO threads (title, description, updated_at) VALUES (?, ?, ?)", [title, description, updatedAt], function(err) {
-    if (err) {
-      return res.status(400).json({ error: err.message });
-    }
-    const threadId = this.lastID;
-    db.run("INSERT INTO messages (thread_id, username, content, timestamp) VALUES (?, ?, ?, ?)", [threadId, username, initialMessage, updatedAt], function(err) {
-      if (err) {
-        return res.status(400).json({ error: err.message });
-      }
-      res.json({ id: threadId });
-    });
-  });
+  try {
+    const result = await pool.query(
+      'INSERT INTO threads (title, description) VALUES ($1, $2) RETURNING id',
+      [title, description]
+    );
+    const threadId = result.rows[0].id;
+    await pool.query(
+      'INSERT INTO messages (thread_id, username, content) VALUES ($1, $2, $3)',
+      [threadId, username, initialMessage]
+    );
+    res.json({ id: threadId });
+  } catch (err) {
+    console.error('Error creating thread', err);
+    res.status(500).json({ error: 'Database error' });
+  }
 });
 
 // スレッドの取得
-app.get('/threads/:id', (req, res) => {
+app.get('/threads/:id', async (req, res) => {
   const { id } = req.params;
-  db.get("SELECT * FROM threads WHERE id = ?", [id], (err, row) => {
-    if (err) {
-      return res.status(400).json({ error: err.message });
-    }
-    res.json(row);
-  });
+  try {
+    const result = await pool.query('SELECT * FROM threads WHERE id = $1', [id]);
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('Error fetching thread', err);
+    res.status(500).json({ error: 'Database error' });
+  }
 });
 
 // スレッドの削除
-app.delete('/threads/:id', (req, res) => {
+app.delete('/threads/:id', async (req, res) => {
   const { id } = req.params;
-  db.run("DELETE FROM threads WHERE id = ?", [id], function(err) {
-    if (err) {
-      return res.status(400).json({ error: err.message });
-    }
-    db.run("DELETE FROM messages WHERE thread_id = ?", [id], function(err) {
-      if (err) {
-        return res.status(400).json({ error: err.message });
-      }
-      res.json({ message: 'Deleted' });
-    });
-  });
+  try {
+    await pool.query('DELETE FROM threads WHERE id = $1', [id]);
+    res.json({ message: 'Deleted' });
+  } catch (err) {
+    console.error('Error deleting thread', err);
+    res.status(500).json({ error: 'Database error' });
+  }
 });
 
 // メッセージ一覧の取得
-app.get('/threads/:id/messages', (req, res) => {
+app.get('/threads/:id/messages', async (req, res) => {
   const { id } = req.params;
-  db.all("SELECT * FROM messages WHERE thread_id = ?", [id], (err, rows) => {
-    if (err) {
-      throw err;
-    }
-    res.json(rows);
-  });
+  try {
+    const result = await pool.query('SELECT * FROM messages WHERE thread_id = $1', [id]);
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Error fetching messages', err);
+    res.status(500).json({ error: 'Database error' });
+  }
 });
 
 // メッセージの投稿
-app.post('/threads/:id/messages', (req, res) => {
+app.post('/threads/:id/messages', async (req, res) => {
   const { id } = req.params;
   const { username, content } = req.body;
-  const timestamp = new Date().toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" });
-  db.run("INSERT INTO messages (thread_id, username, content, timestamp) VALUES (?, ?, ?, ?)", [id, username, content, timestamp], function(err) {
-    if (err) {
-      return res.status(400).json({ error: err.message });
-    }
-    db.run("UPDATE threads SET updated_at = ? WHERE id = ?", [timestamp, id], function(err) {
-      if (err) {
-        return res.status(400).json({ error: err.message });
-      }
-      res.json({ id: this.lastID });
-    });
-  });
+  try {
+    await pool.query(
+      'INSERT INTO messages (thread_id, username, content) VALUES ($1, $2, $3)',
+      [id, username, content]
+    );
+    await pool.query(
+      'UPDATE threads SET updated_at = NOW() WHERE id = $1',
+      [id]
+    );
+    res.json({ message: 'Message posted' });
+  } catch (err) {
+    console.error('Error posting message', err);
+    res.status(500).json({ error: 'Database error' });
+  }
 });
 
 // メッセージの削除
-app.delete('/messages/:id', (req, res) => {
+app.delete('/messages/:id', async (req, res) => {
   const { id } = req.params;
-  db.run("DELETE FROM messages WHERE id = ?", [id], function(err) {
-    if (err) {
-      return res.status(400).json({ error: err.message });
-    }
+  try {
+    await pool.query('DELETE FROM messages WHERE id = $1', [id]);
     res.json({ message: 'Deleted' });
-  });
+  } catch (err) {
+    console.error('Error deleting message', err);
+    res.status(500).json({ error: 'Database error' });
+  }
 });
 
 app.listen(port, () => {
