@@ -13,6 +13,7 @@ function loadThreads() {
                 threadDiv.className = 'thread';
                 threadDiv.innerHTML = `
                     <h3><a href="/thread.html?id=${thread.id}">${thread.title}</a></h3>
+                    <p>${thread.description}</p>
                     <p>最終更新: ${thread.updated_at}</p>
                     <button onclick="deleteThread(${thread.id})">削除</button>
                 `;
@@ -23,14 +24,18 @@ function loadThreads() {
 
 function createThread() {
     const title = document.getElementById('thread-title').value;
+    const description = document.getElementById('thread-description').value;
+    const initialMessage = document.getElementById('initial-message').value;
     fetch('/threads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title })
+        body: JSON.stringify({ title, description, initialMessage })
     })
     .then(response => response.json())
     .then(() => {
         document.getElementById('thread-title').value = '';
+        document.getElementById('thread-description').value = '';
+        document.getElementById('initial-message').value = '';
         loadThreads();
     });
 }

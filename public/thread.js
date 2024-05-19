@@ -10,6 +10,9 @@ function loadThread(threadId) {
         .then(response => response.json())
         .then(data => {
             document.getElementById('thread-title').innerText = data.title;
+            const descriptionDiv = document.createElement('div');
+            descriptionDiv.innerHTML = `<p>${data.description}</p>`;
+            document.body.insertBefore(descriptionDiv, document.getElementById('messages'));
         });
 }
 

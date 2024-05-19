@@ -11,7 +11,7 @@ app.use(cors());
 let db = new sqlite3.Database(':memory:');
 
 db.serialize(() => {
-  db.run("CREATE TABLE threads (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, updated_at TEXT)");
+  db.run("CREATE TABLE threads (id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT, description TEXT, updated_at TEXT)");
   db.run("CREATE TABLE messages (id INTEGER PRIMARY KEY AUTOINCREMENT, thread_id INTEGER, content TEXT, timestamp TEXT)");
 });
 
@@ -31,13 +31,19 @@ app.get('/threads', (req, res) => {
 
 // スレッドの作成
 app.post('/threads', (req, res) => {
-  const { title } = req.body;
+  const { title, description, initialMessage } = req.body;
   const updatedAt = new Date().toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" });
-  db.run("INSERT INTO threads (title, updated_at) VALUES (?, ?)", [title, updatedAt], function(err) {
+  db.run("INSERT INTO threads (title, description, updated_at) VALUES (?, ?, ?)", [title, description, updatedAt], function(err) {
     if (err) {
       return res.status(400).json({ error: err.message });
     }
-    res.json({ id: this.lastID });
+    const threadId = this.lastID;
+    db.run("INSERT INTO messages (thread_id, content, timestamp) VALUES (?, ?, ?)", [threadId, initialMessage, updatedAt], function(err) {
+      if (err) {
+        return res.status(400).json({ error: err.message });
+      }
+      res.json({ id: threadId });
+    });
   });
 });
 
